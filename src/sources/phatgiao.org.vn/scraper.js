@@ -3,6 +3,7 @@ const UserAgent = require('user-agents');
 const userAgent = new UserAgent({ deviceCategory: 'desktop' });
 const { sleep, urlGetParam, urlSetParam, toSlug, downloadImage, formatDate, strToDate, getFileSize, getDimension } = require('../../utils');
 const service = require('../../services');
+const logger = require('../../utils/logger');
 const SOURCE_DOMAIN = 'https://phatgiao.org.vn/';
 
 const scraperObject = {
@@ -26,6 +27,7 @@ const scraperObject = {
                         }
 
                         console.log(`Truy cập danh sách bài viết - Trang ${ currentPage }  =>\n${pageUrl}\n`);
+                        logger.info(`Truy cập danh sách bài viết - Trang ${ currentPage }  =>\n${pageUrl}\n`)
 
                         const pageHtml = await page.content();
         
@@ -182,6 +184,8 @@ const scraperObject = {
                                 Url: toSlug(article.CategoryName)
                             });
 
+                            await sleep();
+
                         } catch (error) 
                         {
                             console.log(`parserCategory => ${ article.SourceUrl }\n ${error}`);
@@ -212,6 +216,8 @@ const scraperObject = {
                             console.log(`parserCategory => ${ categoryName }\n ${error}`);
                         }
         
+                        await sleep();
+
                         return resultVar;
                     }
 
@@ -265,6 +271,8 @@ const scraperObject = {
                                                     console.log(`Xử lý ảnh ${ src } trong nội dung bài viết ${ article.SourceUrl }\n`);
 
                                                     let newSrc = await downloadImage(src);
+
+                                                    await sleep();
         
                                                     if(typeof newSrc != 'undefined' && newSrc.length > 0 && newSrc != 'error')
                                                     {
@@ -280,6 +288,10 @@ const scraperObject = {
                                                             imageName = imageAlt.split('.')[0];
                                                         }else{
                                                             imageName = newSrc.split('/').pop();
+                                                        }
+
+                                                        if(imageName.length > 250){
+                                                            imageName = imageName.substring(0, 250);
                                                         }
 
                                                         const imageSize = await getFileSize(newSrc);
@@ -303,6 +315,8 @@ const scraperObject = {
                                                             Width: imageWidth,
                                                             Height: imageHeight
                                                         });
+
+                                                        await sleep();
 
                                                     }else{
 
@@ -409,6 +423,8 @@ const scraperObject = {
                                             PublishedAt: article.PublishedAt
                                         });
 
+                                        await sleep();
+
                                         for await (const image of imagesInContent) {
 
                                             const mediaId = await service.mediaService.create(image);
@@ -420,6 +436,8 @@ const scraperObject = {
                                                     ArticleId: articleId,
                                                     MediaId: mediaId
                                                 });
+
+                                                await sleep();
 
                                             }
                                         }
@@ -446,6 +464,8 @@ const scraperObject = {
                                             ArticleId: articleId,
                                             CategoryId: categoryId
                                         });
+
+                                        await sleep();
 
                                         const mainImageSize = await getFileSize(imagePath);
 
@@ -479,6 +499,8 @@ const scraperObject = {
 
                                         }
 
+                                        await sleep();
+
                                         // const links = elementContent.find('a');
                                         // let internalLinks = [], externalLinks = [];
 
@@ -509,7 +531,9 @@ const scraperObject = {
                                                 ArticleId: articleId,
                                                 Url: link,
                                                 LinkTypeId: 1
-                                            })
+                                            });
+
+                                            await sleep();
                                         }
 
                                         for await (const link of externalLinks) {
@@ -518,7 +542,9 @@ const scraperObject = {
                                                 ArticleId: articleId,
                                                 Url: link,
                                                 LinkTypeId: 2
-                                            })
+                                            });
+
+                                            await sleep();
                                         }
 
                                         for await (head of headings) {
@@ -530,7 +556,7 @@ const scraperObject = {
                                                 'Bookmark': `#${ $(head).attr('id') }`,
                                                 'Level' : parseInt($(head).prop('tagName').substring(1), 10)
                                             });
-                                                    
+                                            await sleep();   
                                         }
                                         
                                     }
