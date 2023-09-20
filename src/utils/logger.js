@@ -1,10 +1,6 @@
 const winston = require('winston');
 require( 'winston-daily-rotate-file' );
 
-const customFormat = printf(({ level, message, timestamp, stack }) => {
-    return `${timestamp} [${level}] ${file_path}: ${stack || message}`;
-});
-
 module.exports = winston.createLogger({
     format: winston.format.combine(
         winston.format.timestamp({ format: 'MMM-DD-YYYY HH:mm:ss' }),

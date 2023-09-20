@@ -1,11 +1,11 @@
 module.exports = {
     articleService: require('./article.service'),
     categoryService: require('./category.service'),
-    articleCategoryService: require('./article.category.service'),
+    articleCategoryService: require('./articleCategory.service'),
     mediaService: require('./media.service'),
-    articleMediaService: require('./article.media.service'),
-    articleIndexService: require('./article.index.service'),
-    articleLinkService: require('./article.link.service'),
-    articleImageFailService: require('./article.image.fail.service'),
-    crawlFailService: require('./crawl.fail.service')
+    articleMediaService: require('./articleMedia.service'),
+    articleIndexService: require('./articleIndex.service'),
+    articleLinkService: require('./articleLink.service'),
+    articleImageFailService: require('./articleImageFail.service'),
+    crawlDataService : require('./crawlData.service')
 }

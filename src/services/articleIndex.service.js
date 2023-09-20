@@ -30,8 +30,8 @@ const self = module.exports = {
             }
             
         } catch (error) {
-            console.error(`article.index.service create error => ${error}\n`);
-            logger.error(`article.index.service create error => ${error}\n`);
+            console.error(`articleIndex.service create error => ${error}\n`);
+            logger.error(`articleIndex.service create error => ${error}\n`);
         }
 
         return resultVar;

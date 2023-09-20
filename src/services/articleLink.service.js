@@ -6,30 +6,31 @@ const self = module.exports = {
         let resultVar = 0;
 
         try {
-
+            
             const pool = await poolPromise;
 
             if(pool)
             {
-                console.log(`Xử lý dữ liệu ArticleMedias - ${item.Title}\n`);
+                console.log(`Xử lý dữ liệu ArticleLinks - ${item.Title}\n`);
 
                 await pool.request()  
                 .input("ActBy", sql.Int, config.ACTION_BY)  
                 .input("ArticleId", sql.Int, item.ArticleId)  
-                .input("MediaId", sql.Int, item.MediaId)
+                .input("Url", sql.NVarChar(250), item.Url)  
+                .input("LinkTypeId", sql.Int, item.LinkTypeId)
                 .output('Id', sql.Int)
-                    .execute('ArticleMedias_Insert').then(function(recordsets) {
+                    .execute('ArticleLinks_Insert').then(function(recordsets) {
                         const output = (recordsets.output || {});
                         resultVar = output['Id'];
                     }).catch(error =>  {
-                        console.error(`ArticleMedias_Insert error => ${error}\n`);
-                        logger.error(`ArticleMedias_Insert create error => ${error}\n`);
+                        console.error(`ArticleLinks_Insert error => ${error}\n`);
+                        logger.error(`ArticleLinks_Insert create error => ${error}\n`);
                     });
             }
-            
+
         } catch (error) {
-            console.error(`article.media.service create error => ${error}\n`);
-            logger.error(`article.media.service create error => ${error}\n`);
+            console.error(`articleLink.service create error => ${error}\n`);
+            logger.error(`articleLink.service create error => ${error}\n`);
         }
 
         return resultVar;

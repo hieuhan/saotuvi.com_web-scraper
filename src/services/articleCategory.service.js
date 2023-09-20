@@ -28,8 +28,8 @@ const self = module.exports = {
             }
 
         } catch (error) {
-            console.error(`article.category.service create error => ${error}\n`);
-            logger.error(`article.category.service create error => ${error}\n`);
+            console.error(`articleCategory.service create error => ${error}\n`);
+            logger.error(`articleCategory.service create error => ${error}\n`);
         }
 
 
