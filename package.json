@@ -17,7 +17,8 @@
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "user-agents": "^1.0.1444",
     "image-size": "^1.0.2",
-    "winston": "^3.10.0"
+    "winston": "^3.10.0",
+    "winston-daily-rotate-file": "^4.7.1"
   },
   "keywords": [],
   "author": "",

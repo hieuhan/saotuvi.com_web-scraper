@@ -14,7 +14,7 @@ exports.startBrowser = async () => {
             devtools: false,
             executablePath: config.EXECUTABLE_PATH || executablePath(),
             ignoreHTTPSErrors: true,
-            //args: [ '--proxy-server=183.172.58.16:7891' ]
+            args: [ '--proxy-server=103.170.247.164:8494' ]
         });
 
     } catch (error) {

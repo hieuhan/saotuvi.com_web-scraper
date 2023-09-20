@@ -1,9 +1,14 @@
 const cheerio = require('cheerio');
 const UserAgent = require('user-agents');
 const userAgent = new UserAgent({ deviceCategory: 'desktop' });
-const { sleep, urlGetParam, urlSetParam, toSlug, downloadImage, formatDate, strToDate, getFileSize, getDimension } = require('../../utils');
-const service = require('../../services');
+const { sleep, getParamUrl, setParamUrl, toSlug, 
+    downloadImage, formatDate, stringToDate, 
+    getFileSize, getDimension } = require('../../utils');
+const { articleService, categoryService, articleCategoryService, 
+    mediaService, articleMediaService, articleIndexService, 
+    articleLinkService, articleImageFailService, crawlFailService } = require('../../services');
 const logger = require('../../utils/logger');
+const config = require('../../config');
 const SOURCE_DOMAIN = 'https://phatgiao.org.vn/';
 
 const scraperObject = {
@@ -27,7 +32,8 @@ const scraperObject = {
                         }
 
                         console.log(`Truy cập danh sách bài viết - Trang ${ currentPage }  =>\n${pageUrl}\n`);
-                        logger.info(`Truy cập danh sách bài viết - Trang ${ currentPage }  =>\n${pageUrl}\n`)
+
+                        logger.info(`Truy cập danh sách bài viết - Trang ${ currentPage }  =>\n${pageUrl}\n`);
 
                         const pageHtml = await page.content();
         
@@ -59,9 +65,13 @@ const scraperObject = {
                                     let imageName = '';
 
                                     if(typeof imageAlt != 'undefined' && imageAlt.trim().length > 0 && imageAlt.trim() != 'Empty'){
+
                                         imageName = imageAlt.trim();
+
                                     }else{
+
                                         imageName = imagePath.split('/').pop();
+
                                     }
 
                                     if(typeof sourceUrl != 'undefined')
@@ -74,7 +84,7 @@ const scraperObject = {
                                             ImagePath: this.getImagePath(imagePath),
                                             ImageName: imageName,
                                             CategoryName: categoryElement.text().trim(),
-                                            PublishedAt: strToDate(publishedAtElement.text().trim())
+                                            PublishedAt: stringToDate(publishedAtElement.text().trim())
                                         });
                                     }
                                 }
@@ -108,13 +118,15 @@ const scraperObject = {
                                     {
                                         console.log(`pagePromise =>\n${pageUrl}\n${article.SourceUrl}\nstatus code => ${responseStatus}`);
 
+                                        logger.error(`pagePromise =>\n${pageUrl}\n${article.SourceUrl}\nstatus code => ${responseStatus}`);
+
                                         await service.crawlFailService.create({
                                             Title: article.Title,
                                             SourceUrl: article.SourceUrl,
                                             Message: responseStatus.toString()
                                         });
 
-                                        reject(false);
+                                        return reject(false);
                                     }
                                 }
                                 else
@@ -125,12 +137,14 @@ const scraperObject = {
                                         Message: error.toString()
                                     });
                                     
-                                    reject(false);
+                                    return reject(false);
                                 }
 
                             } catch (error) {
 
                                 console.log(`pagePromise => ${error.name} - ${error.message} - ${error.stack}`);
+
+                                logger.error(`pagePromise => ${error.name} - ${error.message} - ${error.stack}`);
 
                                 await service.crawlFailService.create({
                                     Title: article.Title,
@@ -138,7 +152,7 @@ const scraperObject = {
                                     Message: error.toString()
                                 });
 
-                                reject(false);
+                                return reject(false);
         
                             }
 
@@ -160,9 +174,18 @@ const scraperObject = {
                         }
 
                         //Lấy dữ liệu page tiếp theo
-                        currentPage = urlGetParam(pageUrl, 'page') + 1;
+                        const pageParam = getParamUrl(pageUrl, 'page');
 
-                        const nextPageUrl = urlSetParam(pageUrl, 'page', currentPage);
+                        if(pageParam == null){
+                            //đóng page
+                            await this.closePage(page, pageUrl);
+
+                            return;
+                        }
+
+                        currentPage = pageParam + 1;
+
+                        const nextPageUrl = setParamUrl(pageUrl, 'page', currentPage);
 
                         if(nextPageUrl.length > 0){
 
@@ -630,8 +653,6 @@ const scraperObject = {
     },
     async newPage (browser, types = ['document']) {
 
-        let page = null;
-
         try {
 
             page = await browser.newPage();
@@ -640,6 +661,11 @@ const scraperObject = {
 
             await page.setRequestInterception(true);
 
+            await page.authenticate({
+                username: config.PROXY_USERNAME,
+                password: config.PROXY_PASSWORD,
+            });
+
             page.on('request', request => {
                 if (!types.includes(request.resourceType()))
                 return request.abort();
@@ -647,11 +673,13 @@ const scraperObject = {
                 request.continue();
             });
 
-        } catch (error) {
-            console.log(`newPage => ${error.name} - ${error.message} - ${error.stack}`)
-        }
+            return page;
 
-        return page;
+        } catch (error) {
+            console.log(`newPage => ${error.name} - ${error.message} - ${error.stack}`);
+
+            return null;
+        }
     },
     async navigatePage (page, pageUrl){
         let responseStatus; 
@@ -673,37 +701,43 @@ const scraperObject = {
                 .catch(error => console.error(`closePage => ${pageUrl || ''} error => ${error.name} - ${error.message} - ${error.stack}\n`));
 
         }
+        
     },
     getTitle (title) {
-        const index = title.indexOf('(');
+        try {
+            
+            const index = title.indexOf('(');
 
-        if(index != -1)
-        {
-            title = title.substring(0, index).trim();
+            if(index != -1)
+            {
+                title = title.substring(0, index).trim();
+            }
+
+            return title;
+
+        } catch (error) {
+
+            console.error(`getTitle => ${error.name} - ${error.message} - ${error.stack}`);
+
+            return null;
         }
-
-        return title;
+        
     },
     getImagePath (path) {
-        path = path.replace('/t.ex-cdn.com/' , '/i.ex-cdn.com/');
-        path = path.replace(/\/resize\/\d+x\d+\//gm, '/');
 
-        return path;
-    },
-    generateUUIDUsingMathRandom() { 
-        var d = new Date().getTime();//Timestamp
-        var d2 = (performance && performance.now && (performance.now()*1000)) || 0;//Time in microseconds since page-load or 0 if unsupported
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            var r = Math.random() * 16;//random number between 0 and 16
-            if(d > 0){//Use timestamp until depleted
-                r = (d + r)%16 | 0;
-                d = Math.floor(d/16);
-            } else {//Use microseconds since page-load if supported
-                r = (d2 + r)%16 | 0;
-                d2 = Math.floor(d2/16);
-            }
-            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-        });
+        try {
+
+            path = path.replace('/t.ex-cdn.com/' , '/i.ex-cdn.com/');
+            path = path.replace(/\/resize\/\d+x\d+\//gm, '/');
+
+            return path;
+
+        } catch (error) {
+
+            console.error(`getImagePath => ${error.name} - ${error.message} - ${error.stack}`);
+
+            return null;
+        }
     }
 }
 

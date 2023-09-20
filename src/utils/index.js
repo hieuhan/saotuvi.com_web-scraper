@@ -5,6 +5,7 @@ const axios = require('axios');
 const imageSize = require('image-size');
 const { basename, extname, join } = require('path');
 const config = require('../config');
+const logger = require('../utils/logger');
 
 const sleep = async () => {
 
@@ -15,45 +16,46 @@ const sleep = async () => {
     return new Promise(resolve => setTimeout(resolve, time));
 }
 
-function urlGetParam(pageUrl, param)
+function getParamUrl(pageUrl, param)
 {
-    let resultVar = '';
-
     try 
     {
         let currentUrl = new URL(pageUrl);
 
-        resultVar = parseInt(currentUrl.searchParams.get(param) || 1);
+        return parseInt(currentUrl.searchParams.get(param) || 1);
     } 
     catch (error) 
     {
-        console.error(`urlGetParam error => ${error}\n`);
-    }
+        console.error(`getParamUrl error => ${error}\n`);
 
-    return resultVar;
+        logger.error(`getParamUrl error => ${error}\n`);
+
+        return null;
+    }
 }
 
-function urlSetParam(pageUrl, param, value)
+function setParamUrl(pageUrl, param, value)
 {
-    let resultVar = '';
-
     try 
     {
         let currentUrl = new URL(pageUrl);
 
         currentUrl.searchParams.set(param, value);
 
-        resultVar = currentUrl.href; 
+        return currentUrl.href; 
     } 
     catch (error) 
     {
-        console.error(`urlSetParam error => ${error}\n`);
-    }
+        console.error(`setParamUrl error => ${error}\n`);
 
-    return resultVar;
+        logger.error(`setParamUrl error => ${error}\n`);
+
+        return null;
+    }
 }
 
 const toSlug = (str) => {
+
     // Chuyển hết sang chữ thường
     str = str.toLowerCase();     
     
@@ -77,7 +79,6 @@ const toSlug = (str) => {
     // xóa phần dư - ở đầu & cuối
     str = str.replace(/^-+|-+$/g, '');
 
-    // return
     return str;
 }
 
@@ -86,58 +87,60 @@ const getDatePath = (date) => {
 }
 
 const getDirPath = (dirPath) => {
+
     try {
-        if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
+
+        if (!fs.existsSync(dirPath)) {
+
+            fs.mkdirSync(dirPath, { recursive: true });
+
+        }
+
         return dirPath;
+
     } catch (error) {
+
         console.error(error);
-        return Promise.reject(error);
+
+        return Promise.reject(null);
     }
+
 }
 
 const getFileSize = (path) => new Promise((resolve, reject) => {
-    fs.stat(path, (err, stats) => {
-        if (err) {
-            console.log(err)
-            reject(null);
-            return
+    
+    fs.stat(path, (error, stats) => {
+
+        if (error) {
+
+            console.log(error);
+
+            return reject(null);
         }
 
         resolve(stats.size)
-    })
+    });
+
 })
 
 const getDimension = (path) => new Promise((resolve, reject) => {
-    imageSize(path, (err, dimension) => {
-        if (err) {
-            console.log(err);
-            reject(null);
-            return
+
+    imageSize(path, (error, dimension) => {
+
+        if (error) {
+
+            console.log(error);
+
+            return reject(null);
         }
     
         resolve (dimension);
     })
 })
 
-// const getDimension = async(path) => {
-//     var dimension = null;
-//     try {
-//         dimension = await imageSize(path); 
-//     } catch (error) {
-//         console.log(error)
-//     }
-
-//     return dimension;
-// }
-
 async function downloadImage(url) {
-    try {
 
-        // const response = await axios({
-        //     url,
-        //     method: 'GET',
-        //     responseType: 'arraybuffer'
-        // });
+    try {
 
         let fileName = url.split('/').pop();
         
@@ -148,6 +151,7 @@ async function downloadImage(url) {
         if(fs.existsSync(filePath))
         {
             fileName = formatDate(new Date()) + '-' + fileName;
+
             filePath = join(dirPath, fileName);
         }
 
@@ -156,39 +160,43 @@ async function downloadImage(url) {
                 if (res.statusCode === 200) {
                     res.pipe(fs.createWriteStream(filePath))
                         .on('error', (error) => {
+
                             console.error(`downloadImage => ${ url } error => ${error}\n`);
-                            reject('error'); 
+
+                            logger.error(`downloadImage => ${ url } error => ${error}\n`);
+
+                            return reject('error'); 
                         })
                         .once('close', () => resolve(filePath));
                 } else {
+
                     // Consume response data to free up memory
                     res.resume();
-                    reject(new Error(`Request Failed With a Status Code: ${res.statusCode}`));
+
+                    console.error(`downloadImage => ${ url } error => Request Failed With a Status Code: ${res.statusCode}\n`);
+                    
+                    logger.error(`downloadImage => ${ url } error => Request Failed With a Status Code: ${res.statusCode}\n`);
+
+                    return reject('error');
     
                 }
             });
         });
-
-        // return new Promise((resolve, reject) => {
-        //     response.data.pipe(fs.createWriteStream(filePath))
-        //         .on('error', (error) => { 
-        //             console.error(`downloadImage => ${ url } error => ${error}\n`);
-        //             reject('error'); 
-        //         })
-        //         .once('close', () => resolve(filePath)); 
-        // });
-
     } catch (error) 
     {
         console.error(`downloadImage => ${ url } error => ${error}\n`);
+
+        logger.error(`downloadImage => ${ url } error => ${error}\n`);
     }
+
 }
 
 function padTo2Digits(num) {
     return num.toString().padStart(2, '0');
-  }
+}
   
-  function formatDate(date) {
+function formatDate(date) {
+
     return (
     //   [
     //     date.getFullYear(),
@@ -202,33 +210,52 @@ function padTo2Digits(num) {
         padTo2Digits(date.getSeconds()),
       ].join('')
     );
-  }
 
-  function strToDate(dtStr) { //'12/09/2023, 16:30'
-    if (!dtStr) return null
-    let dateParts = dtStr.split("/");
-    let timeParts = dateParts[2].split(",")[1].trim().split(":");
-    dateParts[2] = dateParts[2].split(",")[0].trim();
-    // month is 0-based, that's why we need dataParts[1] - 1
-    var dateObject = new Date(dateParts[2], dateParts[1] - 1, dateParts[0], timeParts[0], timeParts[1]);
+}
+
+function stringToDate(dtStr) { //'12/09/2023, 16:30'
+    try {
+
+        if (!dtStr) return null;
+
+        let dateParts = dtStr.split('/');
+
+        let timeParts = dateParts[2].split(',')[1].trim().split(':');
+
+        dateParts[2] = dateParts[2].split(',')[0].trim();
+
+        // month is 0-based, that's why we need dataParts[1] - 1
+        var dateObject = new Date(dateParts[2], dateParts[1] - 1, dateParts[0], timeParts[0], timeParts[1]);
+        
+        const timeZone = 'Asia/Ho_Chi_Minh';
     
-    const timeZone = 'Asia/Ho_Chi_Minh';
+        return new Date(
 
-    return new Date(
-        dateObject.toLocaleString('en-US', {
-          timeZone,
-        }),
-      );
-  }
+            dateObject.toLocaleString('en-US', {
+              timeZone,
+            })
+
+        );
+
+    } catch (error) {
+
+        console.log(error);
+
+        logger.error(`stringToDate => error => ${error}\n`);
+
+        return null;
+    }
+    
+}
 
 module.exports = {
     sleep: sleep,
-    urlGetParam: urlGetParam,
-    urlSetParam: urlSetParam,
+    getParamUrl: getParamUrl,
+    setParamUrl: setParamUrl,
     toSlug: toSlug,
     downloadImage: downloadImage,
     formatDate: formatDate,
-    strToDate: strToDate,
+    stringToDate: stringToDate,
     getFileSize: getFileSize,
     getDimension: getDimension
 }
