@@ -1,6 +1,7 @@
 const cheerio = require('cheerio');
 const UserAgent = require('user-agents');
 const userAgent = new UserAgent({ deviceCategory: 'desktop' });
+const useProxy = require('puppeteer-page-proxy');
 const logger = require('../../utils/logger');
 const config = require('../../config');
 const { crawlDataService } = require('../../services');
@@ -80,6 +81,7 @@ const scraperObject = {
                                             SourceUrl: sourceUrl,
                                             ImagePath: this.getImagePath(imagePath),
                                             ImageName: imageName,
+                                            CurrentCategoryName: categoryName,
                                             CategoryName: categoryElement.text().trim(),
                                             PublishedAt: stringToDate(publishedAtElement.text().trim())
                                         });
@@ -120,7 +122,8 @@ const scraperObject = {
                                         await crawlDataService.create({
                                             DataSource: DATA_SOURCE,
                                             DataUrl: data.SourceUrl,
-                                            Message: responseStatus + ''
+                                            Message: responseStatus + '',
+                                            StatusId: 3
                                         });
 
                                         return reject(false);
@@ -130,7 +133,8 @@ const scraperObject = {
                                 {
                                     await crawlDataService.create({
                                         DataSource: DATA_SOURCE,
-                                        DataUrl: data.SourceUrl
+                                        DataUrl: data.SourceUrl,
+                                        StatusId: 3
                                     });
                                     
                                     return reject(false);
@@ -145,7 +149,8 @@ const scraperObject = {
                                 await crawlDataService.create({
                                     DataSource: DATA_SOURCE,
                                     DataUrl: data.SourceUrl,
-                                    Message: error.toString()
+                                    Message: error.toString(),
+                                    StatusId: 3
                                 });
 
                                 return reject(false);
@@ -234,6 +239,12 @@ const scraperObject = {
 
             page = await browser.newPage();
 
+            // const proxy = proxies[Math.floor(Math.random() * proxies.length)];
+
+            // console.log(proxy)
+
+            // await useProxy(page, proxy.proxy);
+
             await page.setUserAgent(userAgent.random().toString());
 
             await page.setRequestInterception(true);
@@ -263,7 +274,7 @@ const scraperObject = {
 
         if (!page.isClosed()) {
 
-            await page.goto(`${pageUrl}`, { waitUntil: 'networkidle2' }).then(response => responseStatus = response.status())
+            await page.goto(`${pageUrl}`, { timeout: 0, waitUntil: 'networkidle2' }).then(response => responseStatus = response.status())
             .catch(e => console.log(`navigatePage('${pageUrl}') => ${e.name} - ${e.message} - ${e.stack}\n`));
 
         }

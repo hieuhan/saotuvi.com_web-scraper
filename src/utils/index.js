@@ -213,16 +213,16 @@ function formatDate(date) {
 
 }
 
-function stringToDate(dtStr) { //'12/09/2023, 16:30'
+function stringToDate(dtStr, char = ',') { //'12/09/2023, 16:30'
     try {
 
         if (!dtStr) return null;
 
         let dateParts = dtStr.split('/');
 
-        let timeParts = dateParts[2].split(',')[1].trim().split(':');
+        let timeParts = dateParts[2].split(char)[1].trim().split(':');
 
-        dateParts[2] = dateParts[2].split(',')[0].trim();
+        dateParts[2] = dateParts[2].split(char)[0].trim();
 
         // month is 0-based, that's why we need dataParts[1] - 1
         var dateObject = new Date(dateParts[2], dateParts[1] - 1, dateParts[0], timeParts[0], timeParts[1]);

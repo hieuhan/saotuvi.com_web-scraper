@@ -20,7 +20,7 @@ var self = module.exports = {
                 .input("JSONData", sql.NVarChar(2000), (item.JSONData || null))
                 .input("Data", sql.NVarChar(MAX), (item.Data || null))
                 .input("Message", sql.NVarChar(2000), (item.Message || null))
-                .input("StatusId", sql.TinyInt, (item.StatusId || 1))
+                .input("StatusId", sql.TinyInt, (item.StatusId || 0))
                 .output('Id', sql.Int)
                     .execute('CrawlDatas_Insert').then(function(recordsets) {
                         const output = (recordsets.output || {});

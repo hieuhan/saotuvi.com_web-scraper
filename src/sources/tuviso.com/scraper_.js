@@ -1,6 +1,7 @@
 const cheerio = require('cheerio');
 const UserAgent = require('user-agents');
 const userAgent = new UserAgent({ deviceCategory: 'desktop' });
+const useProxy = require('puppeteer-page-proxy');
 const logger = require('../../utils/logger');
 const config = require('../../config');
 const { crawlDataService } = require('../../services');
@@ -9,22 +10,28 @@ const SOURCE_DOMAIN = 'https://tuviso.com/';
 const DATA_SOURCE = 'tuviso.com';
 
 const scraperObject = {
-    async scraper (browser, pageUrl, categoryName){
+    async scraper (browser, pageUrl, categoryName) {
         try {
-
+            
             const page = await this.newPage(browser);
 
-            if(page != null){
-
+            if(page != null)
+            {
                 const responseStatus = await this.navigatePage(page, pageUrl);
 
                 if(responseStatus && responseStatus == 200){
 
-                    const scrapeCurrentPage = async (pageUrl) => {
+                    let currentPage = getParamUrl(pageUrl, 'page');
 
+                    const scrapeCurrentPage = async (pageUrl) => {
+                        
                         if(page.isClosed()){
                             return;
                         }
+
+                        console.log(`Truy cập danh sách bài viết - Trang ${ currentPage }  =>\n${pageUrl}\n`);
+
+                        //logger.info(`Truy cập danh sách bài viết - Trang ${ currentPage }  =>\n${pageUrl}\n`);
 
                         const pageHtml = await page.content();
         
@@ -176,66 +183,74 @@ const scraperObject = {
 
                         const pagePromise = (data) => new Promise(async (resolve, reject) => {
                             try {
-                                
-                                const newPage = await this.newPage(browser);
+                                const $ = cheerio.load(data);
 
-                                if(newPage != null)
-                                {
-                                    console.log(`Bài viết =>\n${data.SourceUrl}\n`);
-        
-                                    const responseStatus = await this.navigatePage(newPage, data.SourceUrl);
-        
-                                    if(responseStatus && responseStatus == 200)
-                                    {
-                                        const newPageHtml = await newPage.content();
-        
-                                        const $ = cheerio.load(newPageHtml);
-        
-                                        await parserData($, pageUrl, data);
+                                const newsItemElements = $('.post-archive');
 
-                                        await this.closePage(newPage, data.SourceUrl);
-        
-                                        resolve(true);
-                                    }
-                                    else
-                                    {
-                                        console.log(`pagePromise =>\n${pageUrl}\n${data.SourceUrl}\nstatus code => ${responseStatus}`);
+                                if(newsItemElements.length > 0){
 
-                                        logger.error(`pagePromise =>\n${pageUrl}\n${data.SourceUrl}\nstatus code => ${responseStatus}`);
-
-                                        await crawlDataService.create({
-                                            DataSource: DATA_SOURCE,
-                                            DataUrl: data.SourceUrl,
-                                            Message: responseStatus + '',
-                                            StatusId: 3
-                                        });
-
-                                        return reject(false);
-                                    }
                                 }
-                                else
-                                {
-                                    await crawlDataService.create({
-                                        DataSource: DATA_SOURCE,
-                                        DataUrl: data.SourceUrl,
-                                        StatusId: 3
-                                    });
+
+                                //console.log(newsItemElements.html())
+                                //const newPage = await this.newPage(browser);
+
+                                // if(newPage != null)
+                                // {
+                                //     console.log(`Bài viết =>\n${data.SourceUrl}\n`);
+        
+                                //     const responseStatus = await this.navigatePage(newPage, data.SourceUrl);
+        
+                                //     if(responseStatus && responseStatus == 200)
+                                //     {
+                                //         const newPageHtml = await newPage.content();
+        
+                                //         const $ = cheerio.load(newPageHtml);
+        
+                                //         await parserData($, pageUrl, data);
+
+                                //         await this.closePage(newPage, data.SourceUrl);
+        
+                                //         resolve(true);
+                                //     }
+                                //     else
+                                //     {
+                                //         console.log(`pagePromise =>\n${pageUrl}\n${data.SourceUrl}\nstatus code => ${responseStatus}`);
+
+                                //         // logger.error(`pagePromise =>\n${pageUrl}\n${data.SourceUrl}\nstatus code => ${responseStatus}`);
+
+                                //         // await crawlDataService.create({
+                                //         //     DataSource: DATA_SOURCE,
+                                //         //     DataUrl: data.SourceUrl,
+                                //         //     Message: responseStatus + '',
+                                //         //     StatusId: 3
+                                //         // });
+
+                                //         return reject(false);
+                                //     }
+                                // }
+                                // else
+                                // {
+                                //     // await crawlDataService.create({
+                                //     //     DataSource: DATA_SOURCE,
+                                //     //     DataUrl: data.SourceUrl,
+                                //     //     StatusId: 3
+                                //     // });
                                     
-                                    return reject(false);
-                                }
+                                //     return reject(false);
+                                // }
 
                             } catch (error) {
 
                                 console.log(`pagePromise => ${error.name} - ${error.message} - ${error.stack}`);
 
-                                logger.error(`pagePromise => ${error.name} - ${error.message} - ${error.stack}`);
+                                // logger.error(`pagePromise => ${error.name} - ${error.message} - ${error.stack}`);
 
-                                await crawlDataService.create({
-                                    DataSource: DATA_SOURCE,
-                                    DataUrl: data.SourceUrl,
-                                    Message: error.toString(),
-                                    StatusId: 3
-                                });
+                                // await crawlDataService.create({
+                                //     DataSource: DATA_SOURCE,
+                                //     DataUrl: data.SourceUrl,
+                                //     Message: error.toString(),
+                                //     StatusId: 3
+                                // });
 
                                 return reject(false);
         
@@ -244,100 +259,81 @@ const scraperObject = {
                             await sleep();
                         })
 
+                        //   const [response] = await Promise.all([
+                        //     page.waitForResponse(x => x.url().incluses('https://tuviso.com/ajax_post', { timeout: 90000 }))
+                        //   ])
 
-                        page.on('response', async response => {
+                        //   var r = await response.json();
+
+                        //console.log(r)
+
+                        // const postResponse = await page.evaluate( async () => {
+                        //     const response = await fetch('https://tuviso.com/ajax_post', {
+                        //       "headers": {
+                        //         "content-type": "application/x-www-form-urlencoded; charset=UTF-8"
+                        //       },
+                        //       "body": `offset=18&category_id=18`,
+                        //       "method": "POST"
+                        //     });
+                        //     const data = response.responseText;
+                        //     console.log(data)
+                        //     return data;
+                        //   });
+
+                        // console.log(postResponse)
+
+                        //console.log(newsItems)
+                        //Không có data thì đóng page
+                        // if(!Array.isArray(newsItems) || newsItems.length === 0)
+                        // {
+                        //     //đóng page
+                        //     await this.closePage(page, pageUrl);
+                        // }
+                        // else
+                        // {
+                        //     for(index in newsItems)
+                        //     {
+                        //         await pagePromise(newsItems[index]);
+                        //     }
+                        // }
+                        //const button = $('#postMore');
+                        //console.log($(button).text().trim());
+                        //console.log('click');
+                        // await page.evaluate(async () => {
+                        //     await new Promise(async (resolve, reject) => {
+                                
+                        //         const button = document.querySelector('#postMore');
+                        //         if (button !== null) {
+                                    
+                        //           await button.click();
+                        //         } else {
+                        //           //clearInterval(interval);
+                        //           resolve();
+                        //         }
+                        //     });
+                        //   });
+
+
+
+                          page.on('response', async response => {
 
                             if (response.url().includes('https://tuviso.com/ajax_post')) {
 
-                              let responseText = await response.text();
-                              //console.log(responseText)
-                              const $ = cheerio.load(responseText);
-                              let newsItemsLoadMore = [];
-                              const newsItemElements = $('.post-archive');
-
-                            if(newsItemElements.length > 0)
-                            {
-                                for (let index = 0; index < newsItemElements.length; index++) {
-                                    const element = newsItemElements[index],
-                                    titleElement = $(element).find('.post-archive-title').first(),
-                                    summaryElement = $(element).find('.post-archive-meta p').first(),
-                                    imageElement = $(element).find('.post-archive-thumbnail img').first(),
-                                    categoryElement = $(element).find('.post-archive-category').first();
-                                    
-                                    //$(element).addClass('crawled');
-
-                                    if(titleElement.length > 0 &&
-                                        summaryElement.length > 0 &&
-                                        imageElement.length > 0 &&
-                                        categoryElement.length > 0) {
-
-                                        const sourceUrl = titleElement.attr('href'), title = this.getTitle(titleElement.text().trim()),
-                                        imagePath = imageElement.attr('data-src') || imageElement.attr('src'),
-                                        imageAlt = imageElement.attr('alt');
-                                        let imageName = '';
-
-                                        if(typeof imageAlt != 'undefined' && imageAlt.trim().length > 0 && imageAlt.trim() != 'Empty'){
-
-                                            imageName = imageAlt.trim();
-
-                                        }else{
-
-                                            imageName = imagePath.split('/').pop().replace('.webp', '');
-
-                                        }
-
-                                        if(typeof sourceUrl != 'undefined')
-                                        {
-                                            newsItemsLoadMore.push({
-                                                Title: title,
-                                                Summary: summaryElement.text().trim(),
-                                                Url: toSlug(title),
-                                                SourceUrl: sourceUrl,
-                                                ImagePath: this.getImagePath(imagePath),
-                                                ImageName: imageName,
-                                                CurrentCategory: categoryName,
-                                                CategoryName: categoryElement.text().trim(),
-                                                PublishedAt: null
-                                            });
-                                        }
-                                    }
-                                }
-
-                                //console.log(newsItemsLoadMore)
-
-                                for(index in newsItemsLoadMore)
-                                {
-                                    console.log(newsItemsLoadMore[index].SourceUrl)
-                                    await pagePromise(newsItemsLoadMore[index]);
-                                }
-                            }
-
+                              resp = await response.text();
+                              await pagePromise(resp);
                               await page.evaluate(() => window.stop());
 
                             }
 
-                        })
+                          })
 
-                         //Không có data thì đóng page
-                         if(!Array.isArray(newsItems) || newsItems.length === 0)
-                         {
-                             //đóng page
-                             await this.closePage(page, pageUrl);
-                         }
-                         else
-                         {
-                             for(index in newsItems)
-                             {
-                                 await pagePromise(newsItems[index]);
-                             }
-                         }
-
-
-
-                         console.log("click view more to load entire list");
+                          console.log("click view more to load entire list");
                           while (true) {
                               try {
 
+
+
+                                
                                   await page.$eval('#postMore', (el) => {
                                           el.scrollIntoView();
                                           el.click();
@@ -364,28 +360,165 @@ const scraperObject = {
                               }
                           }
 
+                        const loadMoreResult = await page.evaluate(() => new Promise(async (resolve, reject) => {
+                            //return await isElementVisible(page, '#postMore');
+                            const button = document.querySelector('#postMore');
+                            const text = button.innerText.trim();
+                            if (button !== null) {
+                                //console.log('clickViewMoreLoop');
+                                //while(text != 'Đã hết dữ liệu !')
+                                //{
+                                    await button.click();
+                                    //await sleep();
+                                //}
+
+                                resolve(text)
+
+                            } else {
+                                reject(false);
+                            }
+                        }));
+
+                        //console.log(loadMoreResult)
+                        // await page.evaluate(async() => {
+                                
+
+                        //     console.log('clickViewMoreLoop');
+                        //     const button = document.querySelector('#postMore');
+
+                        //     if (button !== null){
+
+                        //         while($(button).text().trim() != 'Đã hết dữ liệu !'){
+                        //             await page.click(button);
+
+                        //             console.log('button click')
+                        //         }
+
+                        //     }
+
+                        // })
+
+                        // clickViewMoreLoop_ = async() =>  {
+                        //     console.log('clickViewMoreLoop');
 
 
-                          //đóng page
+                        //     await page.waitForSelector('#postMore', {visible: true})
+                            
+                        //     console.log('wait');
+
+                        //     const button = await page.$('#postMore');
+
+                        //     await button.click();
+
+                        //     console.log('button click')
+                        //     // .then(() => {
+                        //     //     console.log("Found the button");
+                        //     //     page.click('#postMore')
+                        //     // })
+                        //     // await page.evaluate(async () => {
+                        //     //     await new Promise(async (resolve, reject) => {
+                        //     //         console.log('evaluate')
+                        //     //       const interval = setInterval(async () => {
+                                   
+                        //     //         const button = document.querySelector('#postMore');
+
+                        //     //         console.log('click---')
+                                    
+                        //     //         if (button !== null) {
+                        //     //             console.log('click')
+                        //     //           button.click();
+                        //     //           //await page.click(button)
+                        //     //           console.log(11111)
+                        //     //     // const newPageHtml = await page.content();
+        
+                        //     //     // const $ = cheerio.load(newPageHtml);
+
+                        //     //     // const newsItemElements = $('.main-archive').find('.post-archive:not(.crawled)');
+
+                        //     //     // console.log(newsItemElements)
+       
+                        //     //         } else {
+
+                        //     //           clearInterval(interval);
+                                      
+                        //     //           resolve();
+                        //     //         }
+                        //     //       }, 100);
+                        //     //     });
+                        //     //   });
+                        // }
+
+                        //await clickViewMoreLoop();
+                         
+
+                        //Lấy dữ liệu page tiếp theo
+                        // const pageParam = getParamUrl(pageUrl, 'page');
+
+                        // if(pageParam == null){
+                        //     //đóng page
+                        //     await this.closePage(page, pageUrl);
+
+                        //     return;
+                        // }
+
+                        // currentPage = pageParam + 1;
+
+                        // const nextPageUrl = setParamUrl(pageUrl, 'page', currentPage);
+
+                        // if(nextPageUrl.length > 0){
+
+                        //     await this.navigatePage(page, nextPageUrl);
+
+                        //     return scrapeCurrentPage(nextPageUrl);
+                        // }
+
+                        //đóng page
                         await this.closePage(page, pageUrl);
-
                     }
 
                     const parserData = async ($, pageUrl, data) => {
                         try {
                             
-                            const elementContent = $('.content').first();
+                            const elementContent = $('#article-content').first();
 
                             if(elementContent.length > 0){
-                                await crawlDataService.create({
-                                    DataSource: DATA_SOURCE,
-                                    DataUrl: data.SourceUrl,
-                                    Data: elementContent.html(),
-                                    JSONData: JSON.stringify(data)
-                                });
-                            }
 
-                            await sleep();
+                                // elementContent.find('.box_ads_inserter').remove();
+                                // elementContent.find('div[id^="zone-"]').remove();
+                                // elementContent.find('script').remove();
+                                // elementContent.find('.audio_box').remove();
+                                // elementContent.find('.add_end_detail').remove();
+                                const contentElement = $('.text-content'), summaryElement = contentElement.find('.single-des').first(),
+                                publishTimeElement = contentElement.find('.single-post-time').first(), mainCategoryElement = contentElement.find('.meta-right a').first();
+
+                                if(summaryElement.length > 0){
+                                    if(data.Summary == null){
+                                        data.Summary = summaryElement.text().trim();
+                                    }
+                                }
+
+                                if(publishTimeElement.length > 0){
+                                    if(data.PublishedAt == null){
+                                        let dateParts = publishTimeElement.text().trim().split(',');
+                                        let strDate = dateParts[1].trim().replace('ngày', '');
+                                        data.PublishedAt = stringToDate(strDate.trim(), '-');
+                                    }
+                                }
+
+                                if(mainCategoryElement.length > 0){
+                                    if(data.CategoryName == null){
+                                        data.CategoryName = mainCategoryElement.text().trim();
+                                    }
+                                }
+
+
+                                // await crawlDataService.create({
+                                //     DataSource: DATA_SOURCE,
+                                //     DataUrl: data.SourceUrl,
+                                //     Data: elementContent.html(),
+                                //     JSONData: JSON.stringify(data)
+                                // });
+                            }
 
                         } catch (error) {
                             console.log(`parserData => ${ data.SourceUrl }\n ${error}`);
@@ -393,9 +526,7 @@ const scraperObject = {
                     }
 
                     await scrapeCurrentPage(pageUrl);
-
                 }
-
             }
 
         } catch (error) {
@@ -407,6 +538,12 @@ const scraperObject = {
         try {
 
             page = await browser.newPage();
+
+            // const proxy = proxies[Math.floor(Math.random() * proxies.length)];
+
+            // console.log(proxy)
+
+            // await useProxy(page, proxy.proxy);
 
             await page.setUserAgent(userAgent.random().toString());
 
