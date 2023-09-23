@@ -9,7 +9,7 @@ const scraperObject = require('./scraper');
     {
         await Promise.all([
             scraperObject.scraper(browser, 'https://tuviso.com/tu-vi/tu-vi/tu-vi-tuan/', 'Tử vi tuần'),
-            //scraperObject.scraper(browser, 'https://tuviso.com/tu-vi/tu-vi-thang/12-cung-hoang-dao/cung-bach-duong/', 'Cung Bạch Dương')
+            //scraperObject.scraper(browser, 'https://tuviso.com/nhan-tuong/nhan-tuong/tuong-co-the/nhan-tuong/tuong-mat/nhan-tuong/tuong-not-ruoi/nhan-tuong/tuong-tay/phong-thuy/phong-thuy-nha-o/phong-thuy/cac-cay-phong-thuy/phong-thuy/phong-thuy-cau-tai/phong-thuy/kien-thuc-phong-thuy/dat-ten-cho-con/', 'Cung Bạch Dương')
         ]);
 
         console.log('Đóng trình duyệt...');
