@@ -10,7 +10,7 @@ exports.startBrowser = async () => {
         puppeteer.use(pluginStealth());
 
         browser = await puppeteer.launch({
-            headless: false,
+            headless: true,
             devtools: false,
             executablePath: config.EXECUTABLE_PATH || executablePath(),
             ignoreHTTPSErrors: true,
