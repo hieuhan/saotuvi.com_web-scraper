@@ -172,7 +172,7 @@ const scraperObject = {
                         const pagePromise = (data) => new Promise(async (resolve, reject) => {
                             try {
 
-                                console.log(`pagePromise => ${data.SourceUrl}\n`);
+                                await sleep();
 
                                 const newPage = await this.newPage(browser);
 
@@ -292,8 +292,7 @@ const scraperObject = {
                                                 }
 
                                                 if (typeof sourceUrl != 'undefined') {
-                                                    console.log(`newsItemsLoadMore push => ${sourceUrl}`);
-                                                    //console.log(`newsItemsLoadMore.length => ${newsItemsLoadMore.length}`)
+                                                    //console.log(`newsItemsLoadMore push => ${sourceUrl}`);
                                                     newsItemsLoadMore.push({
                                                         Title: title,
                                                         Summary: summaryElement.text().trim(),
@@ -309,6 +308,7 @@ const scraperObject = {
                                             }
                                         }
 
+                                        console.log(`newsItemsLoadMore.length => ${newsItemsLoadMore.length}`)
                                         //console.log(newsItemsLoadMore)
                                         // console.log('loop newsItemsLoadMore');
 
@@ -387,6 +387,7 @@ const scraperObject = {
                         if (Array.isArray(newsItemsLoadMore) && newsItemsLoadMore.length > 0) {
 
                             for (index in newsItemsLoadMore) {
+                                
                                 await pagePromise(newsItemsLoadMore[index]);
                             }
                         }
